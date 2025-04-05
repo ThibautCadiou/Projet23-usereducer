@@ -1,51 +1,48 @@
-import { useEffect, useReducer } from 'react';
+import { useReducer } from 'react';
 import BankAccountInfos from './components/BankAccountInfos';
 import Button from './components/Button';
 
 const LOAN_AMOUNT = 1000;
 
-export default function App() {
-  const initialState = {
-    balance: 100,
-    hasLoan: false,
-    isAccountOpen: false,
-    status: 'closed', //closed, error, active, withLoan,
-  };
+const initialState = {
+  balance: 0,
+  loan: 0,
+  isActive: false,
+};
 
-  useEffect(function () {
-    dispatch({ type: 'active' });
-  }, []);
+function reducer(state, action) {
+  if (!state.isActive & (action.type !== 'openAccount')) return state;
 
-  const [{ balance, hasLoan, isAccountOpen, status }, dispatch] = useReducer(reducer, initialState);
+  switch (action.type) {
+    case 'openAccount':
+      return { ...state, balance: 500, isActive: true };
 
-  const createAccount = function () {
-    dispatch({ type: 'active' });
-  };
+    case 'deposit':
+      return { ...state, balance: state.balance + action.payload, isActive: true };
 
-  const reset = function () {
-    dispatch({ type: 'reset' });
-  };
+    case 'withdraw':
+      return { ...state, balance: state.balance - action.payload, isActive: true };
 
-  function reducer(state, action) {
-    switch (action.type) {
-      case 'active':
-        console.log('Count is active');
-        return { ...state, payload: initialState, status: 'active', isAccountOpen: true };
+    case 'requestLoan':
+      if (state.loan > 0) return state;
 
-      case 'reset':
-        console.log('Everything is reset now');
-        return {
-          ...state,
-          payload: initialState,
-          balance: 0,
-          status: 'closed',
-          isAccountOpen: false,
-        };
+      return { ...state, balance: state.balance + action.payload, loan: action.payload };
 
-      default:
-        console.log('the action.type properties is set to a value not known by the system ...');
-    }
+    case 'payLoan':
+      return { ...state, loan: 0, balance: state.balance - state.loan };
+
+    case 'closeAccount':
+      if (state.loan > 0 || state.balance !== 0) return state;
+
+      return initialState;
+
+    default:
+      throw new Error('Unknown');
   }
+}
+
+export default function App() {
+  const [{ balance, loan, isActive }, dispatch] = useReducer(reducer, initialState);
 
   return (
     <div className='app'>
@@ -56,30 +53,48 @@ export default function App() {
       <main>
         <div className='bank-account-infos '>
           <BankAccountInfos text={'Balance'} value={balance} />
-          <BankAccountInfos text={'Loan'} value={hasLoan ? LOAN_AMOUNT : 0} />
+          <BankAccountInfos text={'Loan'} value={loan > 0 ? LOAN_AMOUNT : 0} />
         </div>
 
-        <Button onClick={createAccount}>Open Account</Button>
-        <Button otherClassnames={isAccountOpen ? 'btn' : 'btn btn-inactive btn:inactive'}>
+        <Button
+          onClick={() => dispatch({ type: 'openAccount' })}
+          otherClassnames={!isActive ? 'btn' : 'btn btn-inactive btn:inactive'}
+        >
+          Open Account
+        </Button>
+        <Button
+          onClick={() => dispatch({ type: 'deposit', payload: 150 })}
+          otherClassnames={isActive ? 'btn' : 'btn btn-inactive btn:inactive'}
+        >
           Deposit 150€
         </Button>
-        <Button otherClassnames={isAccountOpen ? 'btn' : 'btn btn-inactive btn:inactive'}>
+        <Button
+          onClick={() => dispatch({ type: 'withdraw', payload: 50 })}
+          otherClassnames={isActive ? 'btn' : 'btn btn-inactive btn:inactive'}
+        >
           Withdraw 50€
         </Button>
-        <Button otherClassnames={isAccountOpen ? 'btn' : 'btn btn-inactive btn:inactive'}>
-          Request a 100€ Loan
+        <Button
+          onClick={() => dispatch({ type: 'requestLoan', payload: LOAN_AMOUNT })}
+          otherClassnames={isActive ? 'btn' : 'btn btn-inactive btn:inactive'}
+        >
+          Request a {LOAN_AMOUNT}€ Loan
         </Button>
-        <Button otherClassnames={isAccountOpen ? 'btn' : 'btn btn-inactive btn:inactive'}>
+        <Button
+          otherClassnames={isActive ? 'btn' : 'btn btn-inactive btn:inactive'}
+          onClick={() => dispatch({ type: 'payLoan' })}
+        >
           Pay the Loan
         </Button>
-        <Button otherClassnames={isAccountOpen ? 'btn' : 'btn btn-inactive btn:inactive'}>
+        <Button
+          onClick={() => dispatch({ type: 'closeAccount' })}
+          otherClassnames={isActive ? 'btn' : 'btn btn-inactive btn:inactive'}
+        >
           Close account
         </Button>
       </main>
       <footer>
-        <Button otherClassnames='btn btn-reset btn:inactive' onClick={reset}>
-          Reset
-        </Button>
+        <Button otherClassnames='btn btn-reset btn:inactive'>Reset</Button>
       </footer>
     </div>
   );
